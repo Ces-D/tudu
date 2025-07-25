@@ -126,7 +126,7 @@ pub fn view_project_command() -> Command {
 
 pub fn parse_view_project_command_matches(matches: &ArgMatches) -> TuduResult<i32> {
     let id: &i32 = matches
-        .get_one(TuduArg::Id.name())
+        .get_one(TuduArg::ProjectId.name())
         .ok_or_else(|| TuduError::RequiredArgumentError)?;
 
     Ok(id.clone())

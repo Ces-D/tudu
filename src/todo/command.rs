@@ -1,11 +1,12 @@
 use crate::{
     arg::{TuduArg, ValidDateTime, ValidUrl},
     display::{
-        Prefix, detailed_todo_message, simple_heading, simple_todo_message,
+        Prefix, detailed_todo_message, simple_project_message, simple_todo_message,
         simple_todo_message_with_prefix,
     },
     error::{TuduError, TuduResult},
     infrastructure::database,
+    project::sql::Project,
     schema::todos::dsl as todos_dsl,
     todo::sql::{CloseTodo, NewTodo, Todo, TodoPriority, TodoStatus, UpdateTodo},
 };
@@ -154,12 +155,12 @@ pub fn handle_update_todo_command(matches: &ArgMatches) -> TuduResult<()> {
 }
 
 pub fn close_todo_command() -> Command {
-    Command::new("todo").args([TuduArg::TaskId.into_arg(false).required(true)])
+    Command::new("todo").args([TuduArg::TodoId.into_arg(false).required(true)])
 }
 
 fn parse_close_todo_command_matches(matches: &ArgMatches) -> TuduResult<CloseTodo> {
     let id: &i32 = matches
-        .get_one(TuduArg::Id.name())
+        .get_one(TuduArg::TodoId.name())
         .ok_or_else(|| TuduError::RequiredArgumentError)?;
 
     Ok(CloseTodo {
@@ -185,12 +186,12 @@ pub fn handle_close_todo_command(matches: &ArgMatches) -> TuduResult<()> {
 }
 
 pub fn view_todo_command() -> Command {
-    Command::new("todo").args([TuduArg::TaskId.into_arg(false).required(true)])
+    Command::new("todo").args([TuduArg::TodoId.into_arg(false).required(true)])
 }
 
 fn parse_view_todo_command_matches(matches: &ArgMatches) -> TuduResult<i32> {
     let id: &i32 = matches
-        .get_one(TuduArg::Id.name())
+        .get_one(TuduArg::TodoId.name())
         .ok_or_else(|| TuduError::RequiredArgumentError)?;
 
     Ok(id.clone())
@@ -202,8 +203,8 @@ pub fn handle_view_todo_command(matches: &ArgMatches) -> TuduResult<()> {
     let mut connection = database::database_connection();
     let view_todo_id = parse_view_todo_command_matches(matches)?;
 
-    let (todo, todo_children, (project_name, project_color)) = connection.transaction(
-        move |conn| -> Result<(Todo, Vec<Todo>, (String, Option<String>)), diesel::result::Error> {
+    let (todo, todo_children, project) = connection.transaction(
+        move |conn| -> Result<(Todo, Vec<Todo>, Project), diesel::result::Error> {
             let todo = todos_dsl::todos
                 .filter(todos_dsl::id.eq(view_todo_id))
                 .first::<Todo>(conn)?;
@@ -212,13 +213,12 @@ pub fn handle_view_todo_command(matches: &ArgMatches) -> TuduResult<()> {
                 .load::<Todo>(conn)?;
             let project = projects_dsl::projects
                 .filter(projects_dsl::id.eq(todo.project_id))
-                .select((projects_dsl::name, projects_dsl::color))
-                .first::<(String, Option<String>)>(conn)?;
+                .first::<Project>(conn)?;
             Ok((todo, direct_children, project))
         },
     )?;
 
-    simple_heading(project_name, project_color);
+    simple_project_message(project);
     detailed_todo_message(todo, 0);
     for child in todo_children {
         detailed_todo_message(child, 5);

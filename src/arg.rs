@@ -27,7 +27,9 @@ impl FromStr for ValidDateTime {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         // Try multiple datetime formats
-        if let Ok(date) = NaiveDateTime::parse_from_str(s, "%Y-%m-%d %H:%M:%S") {
+        if let Ok(date) = NaiveDateTime::parse_from_str(s, "%m/%d/%y %I:%M%p") {
+            return Ok(ValidDateTime(date));
+        } else if let Ok(date) = NaiveDateTime::parse_from_str(s, "%Y-%m-%d %H:%M:%S") {
             return Ok(ValidDateTime(date));
         } else if let Ok(date) = NaiveDateTime::parse_from_str(s, "%Y-%m-%d %H:%M") {
             return Ok(ValidDateTime(date));
@@ -104,8 +106,8 @@ pub enum TuduArg {
     ))]
     ParentId,
 
-    #[strum(props(name = "task_id", about = "A specific task id"))]
-    TaskId,
+    #[strum(props(name = "todo_id", about = "A specific todo id"))]
+    TodoId,
 
     #[strum(props(name = "status", about = "How is this todo going"))]
     Status,
@@ -172,7 +174,7 @@ impl TuduArg {
                 .value_parser(value_parser!(ValidHexColor)),
             TuduArg::ProjectId => Arg::new(name).help(about).value_parser(value_parser!(i32)),
             TuduArg::ParentId => Arg::new(name).help(about).value_parser(value_parser!(i32)),
-            TuduArg::TaskId => Arg::new(name).help(about).value_parser(value_parser!(i32)),
+            TuduArg::TodoId => Arg::new(name).help(about).value_parser(value_parser!(i32)),
             TuduArg::Title => Arg::new(name)
                 .help(about)
                 .value_parser(NonEmptyStringValueParser::new()),

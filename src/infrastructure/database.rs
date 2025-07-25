@@ -11,7 +11,6 @@ const MIGRATIONS: EmbeddedMigrations = embed_migrations!();
 pub fn database_connection() -> SqliteConnection {
     let database_url = env::database_url_env();
     let database_url = database_url.to_str().unwrap();
-    println!("Established connection at: {}", database_url);
     SqliteConnection::establish(database_url)
         .unwrap_or_else(|_| panic!("Error connecting to {}", database_url))
 }

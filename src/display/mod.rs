@@ -5,17 +5,20 @@ use strum::EnumProperty;
 use crate::{
     error::TuduError,
     project::sql::Project,
-    todo::{group::TodoGroup, sql::Todo},
+    todo::{
+        group::TodoGroup,
+        sql::{Todo, TodoPriority, TodoStatus},
+    },
 };
 mod hex;
 mod text;
 
 pub fn error_message(error: TuduError) {
-    let name = error.get_str("name").expect("Missing Name Property");
+    let name = error.get_str("Name").expect("Missing Name Property");
     let description = error
-        .get_str("description")
+        .get_str("Description")
         .expect("Missing Description Property");
-    let cta = error.get_str("cta").expect("Missing Cta Property");
+    let cta = error.get_str("Cta").expect("Missing Cta Property");
 
     let line = format!(
         "{} {}: {}\n{}",
@@ -44,10 +47,34 @@ pub enum Prefix {
     Close,
 }
 
+fn priority_text(priority: TodoPriority) -> text::Text {
+    let text = text::Text::new(format!("[P{}]", priority as i32));
+    let text = match priority {
+        TodoPriority::Low => text.color("#198754".to_string()),
+        TodoPriority::Medium => text.color("#0DCAF0".to_string()),
+        TodoPriority::High => text.color("#FFC107".to_string()),
+        TodoPriority::Urgent => text.color("#DC3545".to_string()),
+    };
+    text
+}
+
+fn status_text(status: TodoStatus) -> text::Text {
+    let text = text::Text::new(format!("[{}] ", status)).padding_right(15);
+    let text = match status {
+        TodoStatus::ToDo => text.color("#CED4DA".to_string()),
+        TodoStatus::InProgress => text.color("#0D6EFD".to_string()),
+        TodoStatus::Done => text.color("#198754".to_string()),
+        TodoStatus::Blocked => text.color("#DC3545".to_string()),
+        TodoStatus::OnHold => text.color("#FFC107".to_string()),
+        TodoStatus::Cancelled => text.color("#6C757D".to_string()),
+    };
+    text
+}
+
 pub fn simple_todo_message(todo: Todo) {
     let id = text::Text::new(format!("#{}", todo.id)).padding_right(5);
-    let priority = text::Text::new(format!("[P{}]", todo.priority as i32));
-    let status = text::Text::new(format!("[{}] ", todo.status)).padding_right(5);
+    let priority = priority_text(todo.priority);
+    let status = status_text(todo.status);
     let title = text::Text::new(todo.title).padding_right(5);
 
     let mut line = format!("{}{}{}{}", id, priority, status, title);
@@ -72,23 +99,8 @@ pub fn simple_todo_message_with_prefix(todo: Todo, prefix: Prefix) {
 }
 
 pub fn detailed_todo_message(todo: Todo, padding_left: usize) {
-    let id = text::Text::new(format!("#{}", todo.id))
-        .padding_right(5)
-        .padding_left(padding_left);
-    let priority = text::Text::new(format!("[P{}]", todo.priority as i32));
-    let status = text::Text::new(format!("[{}] ", todo.status)).padding_right(5);
-    let title = text::Text::new(todo.title.clone()).padding_right(5);
-
-    let mut line = format!("{}{}{}{}", id, priority, status, title);
-
-    if let Some(d_date) = todo.due_date {
-        let d = text::Text::new(d_date.format("(due: %a %b %-d %-I:%M%p)").to_string());
-        line += d.to_string().as_str();
-    }
+    simple_todo_message(todo.clone());
     let additional_lines = create_additional_lines(&todo, padding_left);
-
-    // Print the main line
-    writeln!(std::io::stdout(), "{}", line).unwrap();
 
     // Print each additional line
     for additional_line in additional_lines {
