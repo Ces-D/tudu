@@ -2,7 +2,10 @@ use clap::{Command, crate_description, crate_name, crate_version};
 
 use crate::{
     arg::TuduArg,
-    project::command::{close_project_command, new_project_command, update_project_command},
+    project::command::{
+        close_project_command, list_project_command, new_project_command, update_project_command,
+        view_project_command,
+    },
     todo::command::{
         close_todo_command, list_todo_command, new_todo_command, update_todo_command,
         view_todo_command,
@@ -49,12 +52,14 @@ pub fn cli() -> Command {
             Command::new("view")
                 .about("View the details for a single instance of, optionally filtered")
                 .subcommand_required(true)
-                .subcommand(view_todo_command()),
+                .subcommand(view_todo_command())
+                .subcommand(view_project_command()),
         )
         .subcommand(
             Command::new("list")
                 .about("List an overview of multiple items, optionally filtered")
                 .subcommand_required(true)
-                .subcommand(list_todo_command()),
+                .subcommand(list_todo_command())
+                .subcommand(list_project_command()),
         )
 }
