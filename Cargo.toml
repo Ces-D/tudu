@@ -1,0 +1,20 @@
+[package]
+version = "0.1.0"
+edition = "2024"
+name = "tudu"
+description = "tudu helps you track what matters, skip what doesn’t. Simple commands, flexible workflows, no cloud required"
+
+[dependencies]
+chrono = { version = "0.4.41", features = ["serde"] }
+clap = { version = "4.5.41", features = ["cargo", "derive"] }
+colored = "3.0.0"
+diesel = { version = "2.2.12", features = [
+    "chrono",
+    "returning_clauses_for_sqlite_3_35",
+    "sqlite",
+] }
+diesel_migrations = { version = "2.2.0", features = ["sqlite"] }
+regex = "1.11.1"
+serde = { version = "1.0.219", features = ["derive"] }
+strum = { version = "0.27.2", features = ["derive"] }
+url = "2.5.4"
