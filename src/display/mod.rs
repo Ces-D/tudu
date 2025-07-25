@@ -149,7 +149,13 @@ fn create_additional_lines(todo: &Todo, padding_left: usize) -> Vec<text::Text> 
 }
 
 pub fn simple_project_message(project: Project) {
-    simple_heading(project.name, project.color);
+    let id = text::Text::new(format!("#{}", project.id)).padding_right(5);
+    let heading = text::Text::new(project.name)
+        .color(project.color.unwrap_or_else(|| "#2596be".to_string()))
+        .bold()
+        .padding_left(2);
+
+    writeln!(std::io::stdout(), "{}{}", id, heading).unwrap();
     if let Some(desc) = project.description {
         writeln!(std::io::stdout(), "{}", desc).unwrap();
     }
