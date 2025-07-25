@@ -41,12 +41,12 @@ impl Text {
     }
 
     pub fn padding_left(mut self, padding: usize) -> Self {
-        self.text = format!("{:<width$}", self.text, width = padding).into();
+        self.text = format!("{:>width$}", self.text, width = padding).into();
         self
     }
 
     pub fn padding_right(mut self, padding: usize) -> Self {
-        self.text = format!("{:>width$}", self.text, width = padding).into();
+        self.text = format!("{:<width$}", self.text, width = padding).into();
         self
     }
 
