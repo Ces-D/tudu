@@ -49,13 +49,13 @@ impl Display for Todo {
     fn to_message(&self, prefix: Option<Prefix>) -> Message {
         let id = Text::new(format!("#{}", self.id)).padding_right(5);
         let priority = priority_text(self.priority);
-        let status = status_text(self.status).padding_right(20);
+        let status = status_text(self.status).padding_right(5);
         let title = Text::new(self.title.clone()).padding_right(5);
 
         let mut line = format!("{}{}{}{}", id, priority, status, title);
 
         if let Some(d_date) = self.due_date {
-            let d = Text::new(format_datetime("Due", d_date)).padding_left(20);
+            let d = Text::new(format_datetime("Due", d_date)).padding_left(5);
             line += d.to_string().as_str();
         }
 
@@ -148,13 +148,8 @@ impl Display for Project {
 impl Display for TodoGroup {
     fn to_message(&self, prefix: Option<Prefix>) -> Message {
         let mut message = self.main_todo.to_message(prefix);
-        println!();
-        let subtodo_len = self.subtodos.len();
-        for (index, subtodo) in self.subtodos.iter().enumerate() {
-            if index != subtodo_len - 1 {
-                println!();
-            }
-            let sub_message = subtodo.to_message(None).with_padding_left(4);
+        for subtodo in self.subtodos.iter() {
+            let sub_message = subtodo.to_message(None);
             for line in sub_message.lines.into_iter() {
                 message = message.add_line(line);
             }
@@ -164,13 +159,8 @@ impl Display for TodoGroup {
 
     fn to_detailed_message(&self, prefix: Option<Prefix>) -> Message {
         let mut message = self.main_todo.to_detailed_message(prefix);
-        println!();
-        let subtodo_len = self.subtodos.len();
-        for (index, subtodo) in self.subtodos.iter().enumerate() {
-            if index != subtodo_len - 1 {
-                println!();
-            }
-            let sub_message = subtodo.to_detailed_message(None).with_padding_left(4);
+        for subtodo in self.subtodos.iter() {
+            let sub_message = subtodo.to_detailed_message(None);
             for line in sub_message.lines.into_iter() {
                 message = message.add_line(line);
             }

@@ -145,6 +145,7 @@ pub fn handle_view_project_command(matches: &ArgMatches) -> TuduResult<()> {
     // Organize todos hierarchically and display them
     let todo_groups = organize_todos_hierarchically(todos);
     for group in todo_groups {
+        println!();
         group.to_message(None).display();
     }
 
@@ -165,6 +166,7 @@ pub fn handle_list_project_command() -> TuduResult<()> {
     })?;
 
     for project in res {
+        println!();
         project.to_detailed_message(None).display();
     }
 

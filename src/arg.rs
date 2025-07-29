@@ -144,11 +144,8 @@ pub enum TuduArg {
     ))]
     Url,
 
-    #[strum(props(name = "greater_than", about = "A greater than comparison"))]
-    GreaterThan,
-
-    #[strum(props(name = "less_than", about = "A less than comparison"))]
-    LessThan,
+    #[strum(props(name = "include_done", about = "Include the items with status done"))]
+    IncludeDone,
 }
 
 impl TuduArg {
@@ -199,8 +196,7 @@ impl TuduArg {
                 .help(about)
                 .default_value("to-do")
                 .value_parser(value_parser!(TodoStatus)),
-            TuduArg::GreaterThan => Arg::new(name).help(about).action(ArgAction::SetTrue),
-            TuduArg::LessThan => Arg::new(name).help(about).action(ArgAction::SetTrue),
+            TuduArg::IncludeDone => Arg::new(name).help(about).action(ArgAction::SetTrue),
         };
         if include_long { arg.long(name) } else { arg }
     }

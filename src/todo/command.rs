@@ -8,7 +8,10 @@ use crate::{
     todo::sql::{CloseTodo, NewTodo, Todo, TodoPriority, TodoStatus, UpdateTodo},
 };
 use clap::{ArgMatches, Command};
-use diesel::{Connection, ExpressionMethods, QueryDsl, RunQueryDsl, insert_into, update};
+use diesel::{
+    BoolExpressionMethods, Connection, ExpressionMethods, QueryDsl, RunQueryDsl, insert_into,
+    update,
+};
 
 pub fn new_todo_command() -> Command {
     Command::new("todo").args([
@@ -224,35 +227,25 @@ pub fn handle_view_todo_command(matches: &ArgMatches) -> TuduResult<()> {
 
 pub fn list_todo_command() -> Command {
     Command::new("todo").args([
-        TuduArg::DueDate.into_arg(true),
         TuduArg::Priority.into_arg(true),
-        TuduArg::Status.into_arg(true),
-        TuduArg::GreaterThan.into_arg(true),
-        TuduArg::LessThan.into_arg(true),
+        TuduArg::IncludeDone.into_arg(true),
     ])
 }
 
 struct ListTodoFilters {
-    due_date: Option<chrono::NaiveDateTime>,
-    priority: Option<TodoPriority>,
-    status: Option<TodoStatus>,
-    greater_than: bool,
-    less_than: bool,
+    priority: TodoPriority,
+    include_done: bool,
 }
 
 fn parse_list_todo_command_matches(matches: &ArgMatches) -> TuduResult<ListTodoFilters> {
-    let due_date: Option<&ValidDateTime> = matches.get_one(TuduArg::DueDate.name());
-    let priority: Option<&TodoPriority> = matches.get_one(TuduArg::Priority.name());
-    let status: Option<&TodoStatus> = matches.get_one(TuduArg::Status.name());
-    let greater_than: bool = matches.get_flag(TuduArg::GreaterThan.name());
-    let less_than: bool = matches.get_flag(TuduArg::LessThan.name());
-
+    let priority = matches
+        .get_one(TuduArg::Priority.name())
+        .copied()
+        .unwrap_or_default();
+    let include_done = matches.get_flag(TuduArg::IncludeDone.name());
     Ok(ListTodoFilters {
-        due_date: due_date.map(|d| d.0),
-        priority: priority.copied(),
-        status: status.copied(),
-        greater_than: greater_than,
-        less_than: less_than,
+        priority,
+        include_done,
     })
 }
 
@@ -261,32 +254,28 @@ pub fn handle_list_todo_command(matches: &ArgMatches) -> TuduResult<()> {
     let filters = parse_list_todo_command_matches(matches)?;
 
     let res: Vec<Todo> = connection.transaction(move |conn| {
-        let mut query = todos_dsl::todos.into_boxed();
-
-        if let Some(d_date) = filters.due_date {
-            if filters.greater_than {
-                query = query.filter(todos_dsl::due_date.gt(d_date));
-            } else if filters.less_than {
-                query = query.filter(todos_dsl::due_date.lt(d_date));
-            } else {
-                query = query.filter(todos_dsl::due_date.eq(d_date));
-            }
-        }
-
-        if let Some(priority) = filters.priority {
-            query = query.filter(todos_dsl::priority.eq(priority));
-        }
-
-        if let Some(status) = filters.status {
-            query = query.filter(todos_dsl::status.eq(status));
+        if !filters.include_done {
+            todos_dsl::todos
+                .filter(
+                    todos_dsl::status
+                        .ne(TodoStatus::Done)
+                        .and(todos_dsl::priority.eq(filters.priority))
+                        .or(todos_dsl::priority.gt(filters.priority)),
+                )
+                .load::<Todo>(conn)
         } else {
-            query = query.filter(todos_dsl::status.ne(TodoStatus::Done))
+            todos_dsl::todos
+                .filter(
+                    todos_dsl::priority
+                        .eq(filters.priority)
+                        .or(todos_dsl::priority.gt(filters.priority)),
+                )
+                .load::<Todo>(conn)
         }
-
-        query.load::<Todo>(conn)
     })?;
 
     for todo in res {
+        println!();
         todo.to_message(None).display();
     }
     Ok(())

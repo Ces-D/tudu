@@ -40,13 +40,16 @@ impl Text {
         self
     }
 
-    pub fn padding_left(mut self, padding: usize) -> Self {
-        self.text = format!("{:>width$}", self.text, width = padding).into();
+    /// Padding-left
+    pub fn padding_left(mut self, width: usize) -> Self {
+        let spaces = " ".repeat(width);
+        self.text = format!("{}{}", spaces, self.text).into();
         self
     }
 
-    pub fn padding_right(mut self, padding: usize) -> Self {
-        self.text = format!("{:<width$}", self.text, width = padding).into();
+    /// More like Min width align left
+    pub fn padding_right(mut self, width: usize) -> Self {
+        self.text = format!("{:<width$}", self.text, width = width).into();
         self
     }
 
