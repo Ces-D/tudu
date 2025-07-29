@@ -1,9 +1,6 @@
 use crate::{
     arg::{TuduArg, ValidDateTime, ValidUrl},
-    display::{
-        Prefix, detailed_todo_message, simple_project_message, simple_todo_message,
-        simple_todo_message_with_prefix,
-    },
+    display::{Display, Prefix},
     error::{TuduError, TuduResult},
     infrastructure::database,
     project::sql::Project,
@@ -81,7 +78,7 @@ pub fn handle_new_todo_command(matches: &ArgMatches) -> TuduResult<()> {
             .map_err(|e| TuduError::from(e))
     })?;
 
-    simple_todo_message_with_prefix(res, Prefix::New);
+    res.to_message(Some(Prefix::New)).display();
     Ok(())
 }
 
@@ -150,7 +147,7 @@ pub fn handle_update_todo_command(matches: &ArgMatches) -> TuduResult<()> {
             .get_result::<Todo>(conn)
     })?;
 
-    simple_todo_message_with_prefix(res, Prefix::Update);
+    res.to_message(Some(Prefix::Update)).display();
     Ok(())
 }
 
@@ -181,7 +178,7 @@ pub fn handle_close_todo_command(matches: &ArgMatches) -> TuduResult<()> {
             .get_result::<Todo>(conn)
     })?;
 
-    simple_todo_message_with_prefix(res, Prefix::Close);
+    res.to_message(Some(Prefix::Close)).display();
     Ok(())
 }
 
@@ -218,10 +215,10 @@ pub fn handle_view_todo_command(matches: &ArgMatches) -> TuduResult<()> {
         },
     )?;
 
-    simple_project_message(project);
-    detailed_todo_message(todo, 0);
+    project.to_message(None).display();
+    todo.to_detailed_message(None).display();
     for child in todo_children {
-        detailed_todo_message(child, 5);
+        child.to_detailed_message(None).display();
     }
 
     Ok(())
@@ -284,13 +281,15 @@ pub fn handle_list_todo_command(matches: &ArgMatches) -> TuduResult<()> {
 
         if let Some(status) = filters.status {
             query = query.filter(todos_dsl::status.eq(status));
+        } else {
+            query = query.filter(todos_dsl::status.ne(TodoStatus::Done))
         }
 
         query.load::<Todo>(conn)
     })?;
 
     for todo in res {
-        simple_todo_message(todo);
+        todo.to_message(None).display();
     }
     Ok(())
 }

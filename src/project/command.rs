@@ -1,14 +1,14 @@
 use crate::{
     arg::{TuduArg, ValidHexColor},
-    display::{
-        Prefix, display_todo_groups, simple_heading, simple_project_message,
-        simple_project_message_with_prefix,
-    },
+    display::{Display, Prefix},
     error::{TuduError, TuduResult},
     infrastructure::database,
     project::sql::{CloseProject, NewProject, Project, UpdateProject},
     schema::projects::dsl as projects_dsl,
-    todo::{group::organize_todos_hierarchically, sql::Todo},
+    todo::{
+        group::organize_todos_hierarchically,
+        sql::{Todo, TodoStatus},
+    },
 };
 use clap::{ArgMatches, Command};
 use diesel::{
@@ -49,7 +49,7 @@ pub fn handle_new_project_command(matches: &ArgMatches) -> TuduResult<()> {
             .get_result::<Project>(conn)
     })?;
 
-    simple_project_message_with_prefix(res, Prefix::New);
+    res.to_message(Some(Prefix::New)).display();
     Ok(())
 }
 
@@ -89,7 +89,7 @@ pub fn handle_update_project_command(matches: &ArgMatches) -> TuduResult<()> {
             .get_result::<Project>(conn)
     })?;
 
-    simple_project_message_with_prefix(res, Prefix::Update);
+    res.to_message(Some(Prefix::Update)).display();
     Ok(())
 }
 
@@ -113,7 +113,7 @@ pub fn handle_close_project_command(matches: &ArgMatches) -> TuduResult<()> {
         delete(projects_dsl::projects.filter(projects_dsl::id.eq(close_project.id))).execute(conn)
     })?;
 
-    simple_heading(
+    crate::display::simple_heading(
         format!("Deleted {}: Project {}", res, close_project.id),
         Some("#ff0000".to_string()),
     );
@@ -144,16 +144,19 @@ pub fn handle_view_project_command(matches: &ArgMatches) -> TuduResult<()> {
                 .first::<Project>(conn)?;
             let todos = todos_dsl::todos
                 .filter(todos_dsl::project_id.eq(view_project_id))
+                .filter(todos_dsl::status.ne(TodoStatus::Done))
                 .load::<Todo>(conn)?;
             Ok((project, todos))
         },
     )?;
 
-    simple_project_message(project);
+    project.to_message(None).display();
 
     // Organize todos hierarchically and display them
     let todo_groups = organize_todos_hierarchically(todos);
-    display_todo_groups(todo_groups);
+    for group in todo_groups {
+        group.to_message(None).display();
+    }
 
     Ok(())
 }
@@ -165,11 +168,14 @@ pub fn list_project_command() -> Command {
 pub fn handle_list_project_command() -> TuduResult<()> {
     let mut connection = database::database_connection();
 
-    let res: Vec<Project> =
-        connection.transaction(move |conn| projects_dsl::projects.load::<Project>(conn))?;
+    let res: Vec<Project> = connection.transaction(move |conn| {
+        projects_dsl::projects
+            .order(projects_dsl::created_at.desc())
+            .load::<Project>(conn)
+    })?;
 
     for project in res {
-        simple_project_message(project);
+        project.to_detailed_message(None).display();
     }
 
     Ok(())

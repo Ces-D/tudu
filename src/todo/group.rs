@@ -1,4 +1,5 @@
 use serde::Serialize;
+use std::collections::HashMap;
 
 use crate::todo::sql::Todo;
 
@@ -31,8 +32,6 @@ impl TodoGroup {
 /// Main todos are sorted by priority (descending) and then by status. Sub-todos within
 /// each group are also sorted similarly.
 pub fn organize_todos_hierarchically(todos: Vec<Todo>) -> Vec<TodoGroup> {
-    use std::collections::HashMap;
-
     let mut main_todos = Vec::new();
     let mut subtodos_map: HashMap<i32, Vec<Todo>> = HashMap::new();
 
@@ -80,102 +79,6 @@ pub fn organize_todos_hierarchically(todos: Vec<Todo>) -> Vec<TodoGroup> {
     }
 
     todo_groups
-}
-
-/// Represents a `Todo` item within a flattened hierarchical list.
-///
-/// This structure is used to represent a tree of todos in a flat list,
-/// while preserving information about depth and relationships for display purposes.
-#[derive(Debug, Clone, Serialize)]
-pub struct FlatTodo {
-    /// The underlying `Todo` item.
-    pub todo: Todo,
-    /// The depth of the todo in the hierarchy (0 for main todos, 1 for their children, etc.).
-    pub depth: usize,
-    /// A flag indicating if this is a main todo (i.e., has no parent).
-    pub is_main_todo: bool,
-    /// A flag indicating if this todo has any sub-todos.
-    pub has_subtodos: bool,
-}
-
-impl FlatTodo {
-    /// Creates a new `FlatTodo` representing a main todo item.
-    pub fn new_main(todo: Todo, has_subtodos: bool) -> Self {
-        Self {
-            todo,
-            depth: 0,
-            is_main_todo: true,
-            has_subtodos,
-        }
-    }
-
-    /// Creates a new `FlatTodo` representing a sub-todo item.
-    pub fn new_sub(todo: Todo, depth: usize) -> Self {
-        Self {
-            todo,
-            depth,
-            is_main_todo: false,
-            has_subtodos: false,
-        }
-    }
-}
-
-/// Organizes a flat list of `Todo` items into a single, flattened list that
-/// preserves hierarchical information for display.
-///
-/// The list is sorted by main todo priority, with sub-todos listed directly
-/// after their parents.
-pub fn organize_todos_flat_hierarchically(todos: Vec<Todo>) -> Vec<FlatTodo> {
-    use std::collections::HashMap;
-
-    let mut main_todos = Vec::new();
-    let mut subtodos_map: HashMap<i32, Vec<Todo>> = HashMap::new();
-
-    // Separate main todos from subtodos
-    for todo in todos {
-        if todo.parent_id.is_none() {
-            main_todos.push(todo);
-        } else if let Some(parent_id) = todo.parent_id {
-            subtodos_map
-                .entry(parent_id)
-                .or_insert_with(Vec::new)
-                .push(todo);
-        }
-    }
-
-    // Sort main todos by priority (higher first) and then by status
-    main_todos.sort_by(|a, b| {
-        b.priority
-            .cmp(&a.priority)
-            .then_with(|| a.status.cmp(&b.status))
-    });
-
-    // Sort subtodos within each group
-    for subtodos in subtodos_map.values_mut() {
-        subtodos.sort_by(|a, b| {
-            b.priority
-                .cmp(&a.priority)
-                .then_with(|| a.status.cmp(&b.status))
-        });
-    }
-
-    // Create flat list with hierarchy information
-    let mut flat_todos = Vec::new();
-    for main_todo in main_todos {
-        let has_subtodos = subtodos_map.contains_key(&main_todo.id);
-
-        // Add main todo
-        flat_todos.push(FlatTodo::new_main(main_todo.clone(), has_subtodos));
-
-        // Add subtodos if they exist (already sorted)
-        if let Some(subtodos) = subtodos_map.remove(&main_todo.id) {
-            for subtodo in subtodos {
-                flat_todos.push(FlatTodo::new_sub(subtodo, 1));
-            }
-        }
-    }
-
-    flat_todos
 }
 
 #[cfg(test)]

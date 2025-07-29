@@ -50,11 +50,6 @@ impl Text {
         self
     }
 
-    // pub fn padding_x(mut self, padding: usize) -> Self {
-    //     self.text = format!("{:^width$}", self.text, width = padding).into();
-    //     self
-    // }
-
     pub fn bold(mut self) -> Self {
         self.text = self.text.bold();
         self
