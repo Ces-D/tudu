@@ -1,8 +1,8 @@
 use crate::schema::projects;
 use chrono::NaiveDateTime;
 use diesel::{
-    prelude::{AsChangeset, Identifiable},
     Insertable, Queryable, Selectable,
+    prelude::{AsChangeset, Identifiable},
 };
 use serde::{Deserialize, Serialize};
 
@@ -34,15 +34,6 @@ pub struct UpdateProject {
     pub color: Option<String>,
     /// The timestamp when the project was last updated.
     pub updated_at: NaiveDateTime,
-}
-
-/// A struct used to identify a project for deletion.
-#[derive(Debug, Identifiable, Serialize)]
-#[diesel(table_name = projects)]
-#[diesel(check_for_backend(diesel::sqlite::Sqlite))]
-pub struct CloseProject {
-    /// The unique identifier of the project to close/delete.
-    pub id: i32,
 }
 
 /// Represents a project retrieved from the database.

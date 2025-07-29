@@ -1,5 +1,5 @@
 use crate::{
-    arg::{TuduArg, ValidDateTime, ValidUrl},
+    arg::{TuduArg, ValidDateTime, ValidUrl, parse_required_project_id},
     display::{Display, Prefix},
     error::{TuduError, TuduResult},
     infrastructure::database,
@@ -12,8 +12,8 @@ use diesel::{Connection, ExpressionMethods, QueryDsl, RunQueryDsl, insert_into, 
 
 pub fn new_todo_command() -> Command {
     Command::new("todo").args([
-        TuduArg::ProjectId.into_arg(false).required(true),
         TuduArg::Title.into_arg(false).required(true),
+        TuduArg::ProjectId.into_arg(false),
         TuduArg::ParentId.into_arg(true),
         TuduArg::Description.into_arg(true),
         TuduArg::Priority.into_arg(true),
@@ -25,9 +25,7 @@ pub fn new_todo_command() -> Command {
 }
 
 fn parse_new_todo_command_matches(matches: &ArgMatches) -> TuduResult<NewTodo> {
-    let project_id: &i32 = matches
-        .get_one(TuduArg::ProjectId.name())
-        .ok_or_else(|| TuduError::RequiredArgumentError)?;
+    let project_id = parse_required_project_id(matches)?;
     let title: &String = matches
         .get_one(TuduArg::Title.name())
         .ok_or_else(|| TuduError::RequiredArgumentError)?;
@@ -40,7 +38,7 @@ fn parse_new_todo_command_matches(matches: &ArgMatches) -> TuduResult<NewTodo> {
     let url: Option<&ValidUrl> = matches.get_one(TuduArg::Url.name());
 
     Ok(NewTodo {
-        project_id: project_id.clone(),
+        project_id,
         title: title.to_owned(),
         parent_id: parent_id.copied(),
         description: description.map(|s| s.to_owned()),
@@ -84,7 +82,7 @@ pub fn handle_new_todo_command(matches: &ArgMatches) -> TuduResult<()> {
 
 pub fn update_todo_command() -> Command {
     Command::new("todo").args([
-        TuduArg::Id.into_arg(false).required(true),
+        TuduArg::TodoId.into_arg(false),
         TuduArg::ProjectId.into_arg(true),
         TuduArg::ParentId.into_arg(true),
         TuduArg::Title.into_arg(true),
@@ -100,7 +98,7 @@ pub fn update_todo_command() -> Command {
 
 fn parse_update_todo_command_matches(matches: &ArgMatches) -> TuduResult<UpdateTodo> {
     let id: &i32 = matches
-        .get_one(TuduArg::Id.name())
+        .get_one(TuduArg::TodoId.name())
         .ok_or_else(|| TuduError::RequiredArgumentError)?;
     let project_id: Option<&i32> = matches.get_one(TuduArg::ProjectId.name());
     let parent_id: Option<&i32> = matches.get_one(TuduArg::ParentId.name());

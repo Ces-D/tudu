@@ -1,10 +1,13 @@
 use chrono::{NaiveDateTime, ParseError as ChronoError, Utc};
-use clap::{Arg, ArgAction, builder::NonEmptyStringValueParser, value_parser};
+use clap::{Arg, ArgAction, ArgMatches, builder::NonEmptyStringValueParser, value_parser};
 use std::str::FromStr;
 use strum::EnumProperty;
 use url::{ParseError as UrlError, Url};
 
-use crate::todo::sql::{TodoPriority, TodoStatus};
+use crate::{
+    error::{TuduError, TuduResult},
+    todo::sql::{TodoPriority, TodoStatus},
+};
 
 // Custom wrapper types for validation
 #[derive(Debug, Clone)]
@@ -85,9 +88,6 @@ pub enum TuduArg {
     ))]
     Description,
 
-    #[strum(props(name = "id", about = "Id of an item"))]
-    Id,
-
     #[strum(props(
         name = "color",
         about = "Give your project a splash of color with a hex code (e.g., #ff0000)."
@@ -96,7 +96,7 @@ pub enum TuduArg {
 
     #[strum(props(
         name = "project_id",
-        about = "The project this task belongs to. Keeps things tidy!"
+        about = "The project this task belongs to. Keeps things tidy! Can be set through `.tudu` config"
     ))]
     ProjectId,
 
@@ -199,10 +199,22 @@ impl TuduArg {
                 .help(about)
                 .default_value("to-do")
                 .value_parser(value_parser!(TodoStatus)),
-            TuduArg::Id => Arg::new(name).help(about).value_parser(value_parser!(i32)),
             TuduArg::GreaterThan => Arg::new(name).help(about).action(ArgAction::SetTrue),
             TuduArg::LessThan => Arg::new(name).help(about).action(ArgAction::SetTrue),
         };
         if include_long { arg.long(name) } else { arg }
     }
+}
+
+/// Helper function that parses arg matches and `.tudu` config for the required project_id
+pub fn parse_required_project_id(matches: &ArgMatches) -> TuduResult<i32> {
+    let id: Option<&i32> = matches.get_one(TuduArg::ProjectId.name());
+    let project_id = match id {
+        Some(id_ref) => *id_ref,
+        None => match crate::config::get_project_id_from_config() {
+            Some(config_id) => config_id,
+            None => return Err(TuduError::RequiredArgumentError),
+        },
+    };
+    Ok(project_id)
 }

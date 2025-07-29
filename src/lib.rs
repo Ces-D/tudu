@@ -12,6 +12,7 @@ use crate::{
     },
 };
 pub mod arg;
+mod config;
 pub mod display;
 pub mod error;
 pub mod infrastructure;

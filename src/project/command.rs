@@ -1,9 +1,9 @@
 use crate::{
-    arg::{TuduArg, ValidHexColor},
+    arg::{TuduArg, ValidHexColor, parse_required_project_id},
     display::{Display, Prefix},
     error::{TuduError, TuduResult},
     infrastructure::database,
-    project::sql::{CloseProject, NewProject, Project, UpdateProject},
+    project::sql::{NewProject, Project, UpdateProject},
     schema::projects::dsl as projects_dsl,
     todo::{
         group::organize_todos_hierarchically,
@@ -55,7 +55,7 @@ pub fn handle_new_project_command(matches: &ArgMatches) -> TuduResult<()> {
 
 pub fn update_project_command() -> Command {
     Command::new("project").args([
-        TuduArg::Id.into_arg(false).required(true),
+        TuduArg::ProjectId.into_arg(false),
         TuduArg::Name.into_arg(true),
         TuduArg::Description.into_arg(true),
         TuduArg::Color.into_arg(true),
@@ -63,15 +63,13 @@ pub fn update_project_command() -> Command {
 }
 
 fn parse_update_project_command_matches(matches: &ArgMatches) -> TuduResult<UpdateProject> {
-    let id: &i32 = matches
-        .get_one(TuduArg::Id.name())
-        .ok_or_else(|| TuduError::RequiredArgumentError)?;
+    let id = parse_required_project_id(matches)?;
     let name: Option<&String> = matches.get_one(TuduArg::Name.name());
     let description: Option<&String> = matches.get_one(TuduArg::Description.name());
     let color: Option<&ValidHexColor> = matches.get_one(TuduArg::Color.name());
 
     Ok(UpdateProject {
-        id: id.clone(),
+        id,
         name: name.map(|name| name.clone()),
         description: description.map(|desc| desc.clone()),
         color: color.map(|c| c.0.clone()),
@@ -94,15 +92,11 @@ pub fn handle_update_project_command(matches: &ArgMatches) -> TuduResult<()> {
 }
 
 pub fn close_project_command() -> Command {
-    Command::new("project").args([TuduArg::ProjectId.into_arg(false).required(true)])
+    Command::new("project").args([TuduArg::ProjectId.into_arg(false)])
 }
 
-fn parse_close_project_command_matches(matches: &ArgMatches) -> TuduResult<CloseProject> {
-    let id: &i32 = matches
-        .get_one(TuduArg::Id.name())
-        .ok_or_else(|| TuduError::RequiredArgumentError)?;
-
-    Ok(CloseProject { id: id.clone() })
+fn parse_close_project_command_matches(matches: &ArgMatches) -> TuduResult<i32> {
+    parse_required_project_id(matches)
 }
 
 pub fn handle_close_project_command(matches: &ArgMatches) -> TuduResult<()> {
@@ -110,26 +104,22 @@ pub fn handle_close_project_command(matches: &ArgMatches) -> TuduResult<()> {
     let close_project = parse_close_project_command_matches(matches)?;
 
     let res = connection.transaction(move |conn| {
-        delete(projects_dsl::projects.filter(projects_dsl::id.eq(close_project.id))).execute(conn)
+        delete(projects_dsl::projects.filter(projects_dsl::id.eq(close_project))).execute(conn)
     })?;
 
     crate::display::simple_heading(
-        format!("Deleted {}: Project {}", res, close_project.id),
+        format!("Deleted {}: Project {}", res, close_project),
         Some("#ff0000".to_string()),
     );
     Ok(())
 }
 
 pub fn view_project_command() -> Command {
-    Command::new("project").args([TuduArg::ProjectId.into_arg(false).required(true)])
+    Command::new("project").args([TuduArg::ProjectId.into_arg(false)])
 }
 
 pub fn parse_view_project_command_matches(matches: &ArgMatches) -> TuduResult<i32> {
-    let id: &i32 = matches
-        .get_one(TuduArg::ProjectId.name())
-        .ok_or_else(|| TuduError::RequiredArgumentError)?;
-
-    Ok(id.clone())
+    parse_required_project_id(matches)
 }
 
 pub fn handle_view_project_command(matches: &ArgMatches) -> TuduResult<()> {
